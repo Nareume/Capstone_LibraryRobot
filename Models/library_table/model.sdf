@@ -1,0 +1,185 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="library_table">
+    <static>true</static>
+    <link name="link">
+      <collision name="shelf1">
+        <pose>1.4075 0.1625 0.51125 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>2.815 0.325 1.0125</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://library_table/meshes/shelf1.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="link2">
+      <collision name="shelf2">
+        <pose>1.4075 1.6625 0.51125 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>2.815 0.325 1.0125</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>0 1.5 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://library_table/meshes/shelf2.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="link3">
+      <collision name="shelf3">
+        <pose>1.4075 3.1625 0.51125 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>2.815 0.325 1.0125</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>0 3 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://library_table/meshes/shelf3.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="wall1">
+      <collision name="wall1-collision">
+        <pose>0 -1 0.75</pose>
+        <geometry>
+          <box>
+            <size>8 0.2 1.5</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>0 -1 0.75</pose>
+        <geometry>
+          <box>
+            <size>8 0.2 1.5</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="wall2">
+      <collision name="wall1-collision2">
+        <pose>-3.9 0 0.75</pose>
+        <geometry>
+          <box>
+            <size>0.2 1.8 1.5</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>-3.9 0 0.75</pose>
+        <geometry>
+          <box>
+            <size>0.2 1.8 1.5</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="wall3">
+      <collision name="wall1-collision3">
+        <pose>-3 1 0.75</pose>
+        <geometry>
+          <box>
+            <size>2 0.2 1.5</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>-3 1 0.75</pose>
+        <geometry>
+          <box>
+            <size>2 0.2 1.5</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="wall4">
+      <collision name="wall1-collision4">
+        <pose>3.9 1.75 0.75</pose>
+        <geometry>
+          <box>
+            <size>0.2 5.3 1.5</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>3.9 1.75 0.75</pose>
+        <geometry>
+          <box>
+            <size>0.2 5.3 1.5</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="wall5">
+      <collision name="wall1-collision5">
+        <pose>1 4.5 0.75</pose>
+        <geometry>
+          <box>
+            <size>6 0.2 1.5</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>1 4.5 0.75</pose>
+        <geometry>
+          <box>
+            <size>6 0.2 1.5</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+    
+    <link name="wall6">
+      <collision name="wall1-collision6">
+        <pose>-1.9 2.7 0.75</pose>
+        <geometry>
+          <box>
+            <size>0.2 3.6 1.5</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+      	<pose>-1.9 2.7 0.75</pose>
+        <geometry>
+          <box>
+            <size>0.2 3.6 1.5</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+  </model>
+</sdf>
