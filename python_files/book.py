@@ -23,9 +23,9 @@ def detect_book_label(image):
     # 책 라벨 영역 이미지 추출
         xmin, ymin, xmax, ymax = label_area.iloc[it][['xmin', 'ymin', 'xmax', 'ymax']]
         label_image = (image.copy())[int(ymin):int(ymax), int(xmin):int(xmax)]
-        gray = cv2.cvtColor(label_image, cv2.COLOR_BGR2GRAY)
         
     # Tesseract OCR을 이용하여 텍스트 추출
+        gray = cv2.cvtColor(label_image, cv2.COLOR_BGR2GRAY)
         label_text = pytesseract.image_to_string(gray, lang = 'digits')
         texts.append(label_text)
         boxs.append([int(xmin), int(ymin), int(xmax), int(ymax)])
