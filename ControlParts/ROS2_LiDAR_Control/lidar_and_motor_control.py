@@ -10,26 +10,55 @@ class LidarAndMotorControl(Node):
         self.motor_deg_pub = self.create_publisher(Float32, 'motor_deg', 10)
         self.motor_vel_pub = self.create_publisher(Int16, 'motor_vel', 10)
 
+        self.target_position = None
+
+        # PID control parameters
+        self.Kp = 30
+        self.Ki = 0.01
+        self.Kd = 1
+        self.prev_error = 0
+        self.integral = 0
+
     def lidar_callback(self, msg):
         # Process LiDAR data and implement the algorithm for moving to the mapped position
-        
-        # Set the desired motor degree and velocity based on the algorithm
-        target_deg = ...
-        motor_vel = ...
+        target_position = self.calculate_target_position(msg)
+        self.target_position = target_position
 
-        self.motor_deg_pub.publish(Float32(data=target_deg))
-        self.motor_vel_pub.publish(Int16(data=motor_vel))
+    def calculate_target_position(self, lidar_data):
+        # Process LiDAR data and return the target position
+        min_range = min(lidar_data.ranges)
+        min_range_index = lidar_data.ranges.index(min_range)
+
+        target_angle = lidar_data.angle_min + min_range_index * lidar_data.angle_increment
+
+        return target_angle
 
 
-def main(args=None):
-    rclpy.init(args=args)
+    def control_loop(self):
+        if self.target_position is not None:
+            error = self.target_position - self.current_position
+            self.integral += error
+            derivative = error - self.prev_error
+            control = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
+            self.prev_error = error
 
-    lidar_and_motor_control_node = LidarAndMotorControl()
+            motor_vel = min(abs(control), 255)
+            target_deg = ...
 
-    rclpy.spin(lidar_and_motor_control_node)
+            self.motor_deg_pub.publish(Float32(data=target_deg))
+            self.motor_vel_pub.publish(Int16(data=motor_vel))
 
-    lidar_and_motor_control_node.destroy_node()
-    rclpy.shutdown()
+    def main(args=None):
+        rclpy.init(args=args)
 
-if __name__ == '__main__':
-    main()
+        lidar_and_motor_control_node = LidarAndMotorControl()
+
+        while rclpy.ok():
+            rclpy.spin_once(lidar_and_motor_control_node)
+            lidar_and_motor_control_node.control_loop()
+
+        lidar_and_motor_control_node.destroy_node()
+        rclpy.shutdown()
+
+    if __name__ == '__main__':
+        main()
