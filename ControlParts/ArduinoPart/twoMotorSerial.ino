@@ -6,6 +6,8 @@
 #define leftMotorPin2 6
 #define rightMotorPin1 10
 #define rightMotorPin2 11
+#define leftMotorEnable 13
+#define rightMotorEnable 12
 
 volatile int leftEncoderPos = 0;
 volatile int rightEncoderPos = 0;
@@ -21,6 +23,8 @@ void setup() {
   pinMode(leftMotorPin2, OUTPUT);
   pinMode(rightMotorPin1, OUTPUT);
   pinMode(rightMotorPin2, OUTPUT);
+  pinMode(leftMotorEnable, OUTPUT);
+  pinMode(rightMotorEnable, OUTPUT);
 
   attachInterrupt(digitalPinToInterrupt(leftEncoderPinA), updateLeftEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(leftEncoderPinB), updateLeftEncoder, CHANGE);
@@ -32,24 +36,35 @@ void loop() {
   if (Serial.available() > 0) {
     char command = Serial.read();
 
+    int speed = 180; // Default speed
+    if (command == 'S') {
+      speed = Serial.parseInt(); // Read the next integers as speed
+      if (speed < 0) speed = 0; // Ensure speed is not negative
+      if (speed > 255) speed = 255; // Ensure speed does not exceed 255
+      command = Serial.read(); // Read the next character as command
+    }
+
+    analogWrite(leftMotorEnable, speed);
+    analogWrite(rightMotorEnable, speed);
+
     switch(command) {
       case 'F': // Forward
         moveMotor(leftMotorPin1, leftMotorPin2, HIGH, LOW);
         moveMotor(rightMotorPin1, rightMotorPin2, HIGH, LOW);
-        delay(2000); 
+        delay(3000); 
         break;
       case 'B': // Backward
         moveMotor(leftMotorPin1, leftMotorPin2, LOW, HIGH);
         moveMotor(rightMotorPin1, rightMotorPin2, LOW, HIGH);
-        delay(2000);
+        delay(3000);
         break;
       case 'L': // Turn left
         moveMotor(rightMotorPin1, rightMotorPin2, HIGH, LOW);
-        delay(2000);
+        delay(3000);
         break;
       case 'R': // Turn right
         moveMotor(leftMotorPin1, leftMotorPin2, HIGH, LOW);
-        delay(2000);
+        delay(3000);
         break;
     }
     
