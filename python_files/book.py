@@ -59,7 +59,7 @@ def detect_book_label(image):
         texts.append(label_text)
         boxs.append([int(xmin), int(ymin), int(xmax), int(ymax)])
         
-    return texts
+    return texts, boxs
 
 
 cap = cv2.VideoCapture('samplev.mp4')
