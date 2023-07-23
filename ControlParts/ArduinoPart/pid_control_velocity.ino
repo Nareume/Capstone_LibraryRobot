@@ -74,6 +74,30 @@ void loop() {
 }
 
 
+void setMotorSpeeds(double leftSpeed, double rightSpeed) {
+  // 왼쪽 모터 속도 설정
+  if (leftSpeed >= 0) {
+    digitalWrite(leftMotorPin1, HIGH);
+    digitalWrite(leftMotorPin2, LOW);
+    analogWrite(leftMotorPinPWM, map(leftSpeed, 0, 100, 0, 255));
+  } else {
+    digitalWrite(leftMotorPin1, LOW);
+    digitalWrite(leftMotorPin2, HIGH);
+    analogWrite(leftMotorPinPWM, map(abs(leftSpeed), 0, 100, 0, 255));
+  }
+
+  // 오른쪽 모터 속도 설정
+  if (rightSpeed >= 0) {
+    digitalWrite(rightMotorPin1, HIGH);
+    digitalWrite(rightMotorPin2, LOW);
+    analogWrite(rightMotorPinPWM, map(rightSpeed, 0, 100, 0, 255));
+  } else {
+    digitalWrite(rightMotorPin1, LOW);
+    digitalWrite(rightMotorPin2, HIGH);
+    analogWrite(rightMotorPinPWM, map(abs(rightSpeed), 0, 100, 0, 255));
+  }
+}
+
 
 // 왼쪽 모터 속도 계산
 double calculateLeftSpeed() { 
