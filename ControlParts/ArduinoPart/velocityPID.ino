@@ -1,8 +1,8 @@
-#define encoder0PinA 3
-#define encoder0PinB 4
+// define pin values
+#define encoder0PinA 4
+#define encoder0PinB 3
 #define encoder1PinA 9
 #define encoder1PinB 8
-
 #define leftMotorPin1 11
 #define leftMotorPin2 10
 #define rightMotorPin1 6
@@ -10,39 +10,40 @@
 #define leftMotorPinPWM 12
 #define rightMotorPinPWM 7
 
-#define P_GAIN 8
-#define I_GAIN 0.0
-#define D_GAIN 0.0
+// define absolute values which we use
+#define P_GAIN 5.0
+#define I_GAIN 10.0
+#define D_GAIN 5.0
+#define TARGET_SPEED 0.7
+#define gearboxRatio 27.0
+#define encoderPulsesPerRevolution 26.0
 
-#define TARGET_SPEED 1.0
-#define ConstantPulse 1725 //1m->pulse
+// define robot specification values
+const double gearboxRatio = 27.0;
+const double encoderPulsesPerRevolution = 26.0;
+const double wheelDiameter = 0.13;  // meter
+const double wheelbase = 0.30;      // meter
+const double wheelCircumference = wheelDiameter * PI;
+const double distancePerPulse = wheelCircumference / (encoderPulsesPerRevolution * gearboxRatio);
 
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
+// define related values in code
 float currentSpeed0 = 0.00;
 float currentSpeed1 = 0.00;
-
 float targetSpeed = 0.00;
-
 float error0 = 0.00;
 float accError0 = 0.00;
 float errorGap0 = 0.00;
-
 float error1 = 0.00;
 float accError1 = 0.00;
 float errorGap1 = 0.00;
-
+float motorSpeed = 0.00;
 volatile long encoder0Pos = 0;
 volatile long encoder1Pos = 0;
-
 volatile long encoder0PosLast = 0;
 volatile long encoder1PosLast = 0;
-
 unsigned long lastUpdateTime = 0;
 
+// setup function
 void setup() {
   pinMode(leftMotorPin1, OUTPUT);
   pinMode(leftMotorPin2, OUTPUT);
@@ -52,22 +53,17 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoder0PinA), updateEncoder0, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoder1PinA), updateEncoder1, CHANGE);
 
-  Wire.begin();
-  lcd.init();
-  lcd.backlight();
-  lcd.clear();
-
   Serial.begin(115200);
 }
 
+// loop function
 void loop() {
   unsigned long currentTime = millis();
   float dt = (currentTime - lastUpdateTime) / 1000.0;  // Convert to seconds
-  
-  if (currentTime - lastUpdateTime >= 100) {
-    currentSpeed0 = (encoder0Pos - encoder0PosLast) * 10;
-    currentSpeed1 = (encoder1Pos - encoder1PosLast) * 10;
 
+  if (currentTime - lastUpdateTime >= 50) {
+    currentSpeed0 = (encoder0Pos - encoder0PosLast) * distancePerPulse * 20;  // 50ms 동안의 이동거리를 초당 속도로 변환
+    currentSpeed1 = (encoder1Pos - encoder1PosLast) * distancePerPulse * 20;
     encoder0PosLast = encoder0Pos;
     encoder1PosLast = encoder1Pos;
     lastUpdateTime = currentTime;
@@ -81,15 +77,22 @@ void loop() {
   float pidControl1 = pidControlSystem(error1, accError1, errorGap1, dt);
   moveMotor(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, pidControl1);
 
-  Serial.print(targetSpeed);
+  Serial.print(TARGET_SPEED);
   Serial.print("\t");
   Serial.print(currentSpeed0);
   Serial.print("\t");
   Serial.print(currentSpeed1);
   Serial.print("\t");
-  Serial.println(pidControl0);
+  Serial.print(error0);
+  Serial.print("\t");
+  Serial.print(error1);
+  Serial.print("\t");
+  Serial.print(pidControl0);
+  Serial.print("\t");
+  Serial.println(pidControl1);
 }
 
+// 2체배 (left)
 void updateEncoder0() {
   if (digitalRead(encoder0PinB) == digitalRead(encoder0PinA)) {
     encoder0Pos--;
@@ -98,6 +101,7 @@ void updateEncoder0() {
   }
 }
 
+// 2체배 (right)
 void updateEncoder1() {
   if (digitalRead(encoder1PinB) == digitalRead(encoder1PinA)) {
     encoder1Pos--;
@@ -106,22 +110,24 @@ void updateEncoder1() {
   }
 }
 
-void calculateError(float* error, float* accError, float* errorGap, float currentSpeed, float targetSpeedms) {
-  targetSpeed = targetSpeedms * ConstantPulse;
+// Calculate Error in function
+void calculateError(float* error, float* accError, float* errorGap, float currentSpeed, float targetSpeed) {
   *errorGap = targetSpeed - currentSpeed - *error;
   *error = targetSpeed - currentSpeed;
   *accError += *error;
 }
 
+// PID Control Function
 float pidControlSystem(float error, float accError, float errorGap, float dt) {
   float pControl = P_GAIN * error;
-  float iControl = I_GAIN * accError * dt;
-  float dControl = D_GAIN * errorGap / dt;
+  float iControl = I_GAIN * (accError * dt);
+  float dControl = D_GAIN * (errorGap / dt);
   return pControl + iControl + dControl;
 }
 
+// Moving Motor by PWM constant which is regulated 
 void moveMotor(int motorPinPWM, int motorPin1, int motorPin2, float pidControl) {
-  int motorSpeed = constrain(abs(pidControl), 0, 255);
+  motorSpeed = constrain(abs(pidControl), 0, 255);
   analogWrite(motorPinPWM, motorSpeed);
 
   if (pidControl >= 0) {
@@ -132,4 +138,3 @@ void moveMotor(int motorPinPWM, int motorPin1, int motorPin2, float pidControl) 
     digitalWrite(motorPin2, HIGH);
   }
 }
-
