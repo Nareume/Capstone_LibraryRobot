@@ -22,6 +22,8 @@
 #define rightMotorPin2 6
 #define leftMotorPinPWM 12
 #define rightMotorPinPWM 7
+#define LED_PIN 13
+
 
 // define absolute values which we use
 #define P_GAIN 15.0
