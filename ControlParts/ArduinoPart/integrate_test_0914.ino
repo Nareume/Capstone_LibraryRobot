@@ -186,7 +186,7 @@ void setup() {
   RCCHECK(rclc_publisher_init_default(
     &publisher,
     &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
+    ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
     "micro_ros_arduino_node_publisher"));
 
   // ... Other Executor and Timer Setup ...
