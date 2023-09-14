@@ -214,7 +214,7 @@ void loop() {
 
     pos_x += dt * ((currentSpeed0+currentSpeed1)/2) * cos(angle_z);
     pos_y += dt * ((currentSpeed0+currentSpeed1)/2) * sin(angle_z);
-    angle_z += dt * ((currentSpeed1-currentSpeed0)/wheelbase);
+    angle_z += dt * ((currentSpeed0-currentSpeed1)/wheelbase);
 
     calc_quat(angle_z, qx, qz);
 
