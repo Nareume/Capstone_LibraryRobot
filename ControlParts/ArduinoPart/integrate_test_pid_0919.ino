@@ -217,26 +217,29 @@ void loop() {
   // Update motor speeds based on targetSpeedLinear and targetSpeedAngular
   teleop();
   
-  float rightWheelSpeed = targetSpeedLinear + targetSpeedAngular * wheelbase / 2;
-  float leftWheelSpeed = targetSpeedLinear - targetSpeedAngular * wheelbase / 2;
 
-   // PID control for the left motor
-  float errorLeft = targetSpeedLinear - leftWheelSpeed; // Calculate error
+ // Calculate the desired wheel speeds based on the target linear and angular speeds
+  float desiredLeftWheelSpeed = targetSpeedLinear - (targetSpeedAngular * wheelbase / 2);
+  float desiredRightWheelSpeed = targetSpeedLinear + (targetSpeedAngular * wheelbase / 2);
+
+  // PID control for the left wheel
+  float errorLeft = desiredLeftWheelSpeed - leftWheelSpeed; // Calculate error
   integralLeft += errorLeft; // Update integral term
   float derivativeLeft = errorLeft - prevErrorLeft; // Calculate derivative term
   float leftMotorSpeed = P_GAIN * errorLeft + I_GAIN * integralLeft + D_GAIN * derivativeLeft; // PID formula
   prevErrorLeft = errorLeft; // Update previous error
 
-  // PID control for the right motor
-  float errorRight = targetSpeedLinear - rightWheelSpeed; // Calculate error
+  // PID control for the right wheel
+  float errorRight = desiredRightWheelSpeed - rightWheelSpeed; // Calculate error
   integralRight += errorRight; // Update integral term
   float derivativeRight = errorRight - prevErrorRight; // Calculate derivative term
   float rightMotorSpeed = P_GAIN * errorRight + I_GAIN * integralRight + D_GAIN * derivativeRight; // PID formula
   prevErrorRight = errorRight; // Update previous error
 
-  // Move motors using PID controlled speeds
+  // Update motor speeds using PID-controlled values
   moveMotorSimple(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, leftMotorSpeed);
   moveMotorSimple(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, rightMotorSpeed);
+
 }
 
 void leftEncoderISR() {
