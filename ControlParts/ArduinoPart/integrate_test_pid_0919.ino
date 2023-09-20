@@ -64,6 +64,12 @@ float targetSpeedAngular = 0.0;
 float linearSpeed = 0.0;
 float angularSpeed = 0.0;
 
+// PID Control variables
+float prevErrorLeft = 0.0;
+float prevErrorRight = 0.0;
+float integralLeft = 0.0;
+float integralRight = 0.0;
+
 float pos_x = 0;
 float pos_y = 0;
 float angle_z = 0;
@@ -134,6 +140,12 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(leftEncoderPinA), updateLeftEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(rightEncoderPinA), updateRightEncoder, CHANGE);
   Serial.begin(115200);
+
+  // Initialize PID control variables
+  prevErrorLeft = 0.0;
+  prevErrorRight = 0.0;
+  integralLeft = 0.0;
+  integralRight = 0.0;
 
   // Create subscriber
   RCCHECK(rclc_subscription_init_default(
@@ -208,8 +220,23 @@ void loop() {
   float rightWheelSpeed = targetSpeedLinear + targetSpeedAngular * wheelbase / 2;
   float leftWheelSpeed = targetSpeedLinear - targetSpeedAngular * wheelbase / 2;
 
-  moveMotorSimple(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, leftWheelSpeed);
-  moveMotorSimple(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, rightWheelSpeed);
+   // PID control for the left motor
+  float errorLeft = targetSpeedLinear - leftWheelSpeed; // Calculate error
+  integralLeft += errorLeft; // Update integral term
+  float derivativeLeft = errorLeft - prevErrorLeft; // Calculate derivative term
+  float leftMotorSpeed = P_GAIN * errorLeft + I_GAIN * integralLeft + D_GAIN * derivativeLeft; // PID formula
+  prevErrorLeft = errorLeft; // Update previous error
+
+  // PID control for the right motor
+  float errorRight = targetSpeedLinear - rightWheelSpeed; // Calculate error
+  integralRight += errorRight; // Update integral term
+  float derivativeRight = errorRight - prevErrorRight; // Calculate derivative term
+  float rightMotorSpeed = P_GAIN * errorRight + I_GAIN * integralRight + D_GAIN * derivativeRight; // PID formula
+  prevErrorRight = errorRight; // Update previous error
+
+  // Move motors using PID controlled speeds
+  moveMotorSimple(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, leftMotorSpeed);
+  moveMotorSimple(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, rightMotorSpeed);
 }
 
 void leftEncoderISR() {
