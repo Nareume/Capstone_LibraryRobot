@@ -199,9 +199,9 @@ void loop() {
 
     serActualSpeeds();
 
-    pos_x += dt * ((leftWheelSpeed+rightWheelSpeed)/2) * cos(angle_z);
-    pos_y += dt * ((leftWheelSpeed+rightWheelSpeed)/2) * sin(angle_z);
-    angle_z += dt * ((rightWheelSpeed-leftWheelSpeed)/wheelbase);
+    pos_x += interval * ((leftWheelSpeed+rightWheelSpeed)/2) * cos(angle_z);
+    pos_y += interval * ((leftWheelSpeed+rightWheelSpeed)/2) * sin(angle_z);
+    angle_z += interval * ((rightWheelSpeed-leftWheelSpeed)/wheelbase);
 
     serActualOdom();
 
