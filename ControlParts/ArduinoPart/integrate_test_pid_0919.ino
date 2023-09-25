@@ -69,6 +69,21 @@ float prevErrorLeft = 0.0;
 float prevErrorRight = 0.0;
 float integralLeft = 0.0;
 float integralRight = 0.0;
+float leftWheelSpeed = 0.0;
+float rightWheelSpeed = 0.0;
+
+float desiredLeftWheelSpeed = 0.0;
+float desiredRightWheelSpeed = 0.0;
+
+// PID control for the left wheel
+float errorLeft = 0.0; // Calculate error
+float derivativeLeft = 0.0; // Calculate derivative term
+float leftMotorSpeed = 0.0; // PID formula
+
+// PID control for the right wheel
+float errorRight = 0.0; // Calculate error
+float derivativeRight = 0.0; // Calculate derivative term
+float rightMotorSpeed = 0.0; // PID formula
 
 float pos_x = 0;
 float pos_y = 0;
