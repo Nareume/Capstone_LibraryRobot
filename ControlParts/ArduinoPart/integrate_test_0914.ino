@@ -76,7 +76,7 @@ float pos_x = 0;
 float pos_y = 0;
 float angle_z = 0;
 
-float qx = 0;
+float qw = 0;
 float qz = 0;
 
 
@@ -127,7 +127,7 @@ float pidControlSystem(float error, float accError, float errorGap, float dt) {
   float pControl = P_GAIN * error;
   float iControl = I_GAIN * (accError * dt);
   float dControl = D_GAIN * (errorGap / dt);
-  return pControl + iControl + dControl;
+  return abs(pControl + iControl + dControl);
 }
 
 // Moving Motor by PWM constant which is regulated 
@@ -144,12 +144,12 @@ void moveMotor(int motorPinPWM, int motorPin1, int motorPin2, float pidControl) 
   }
 }
 
-void calc_quat(float theta, float &qx, float &qz) {
+void calc_quat(float theta, float &qz, float &qw) {
   float cos_half_theta = cos(theta / 2.0);
   float sin_half_theta = sin(theta / 2.0);
 
-  qx = cos_half_theta;
   qz = sin_half_theta;
+  qw = cos_half_theta;
 }
 
 void setup() {
@@ -216,12 +216,12 @@ void loop() {
     pos_y += dt * ((currentSpeed0+currentSpeed1)/2) * sin(angle_z);
     angle_z += dt * ((currentSpeed1-currentSpeed0)/wheelbase);
 
-    calc_quat(angle_z, qx, qz);
+    calc_quat(angle_z, qz, qw);
 
     odom.pose.pose.position.x = pos_x;
     odom.pose.pose.position.y = pos_y;
-    odom.pose.pose.orientation.x = qx;
     odom.pose.pose.orientation.z = qz;
+    odom.pose.pose.orientation.w = qw;
     RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
   }
 
@@ -229,11 +229,11 @@ void loop() {
   float rightWheelSpeed = targetSpeedLinear + targetSpeedAngular * wheelbase / 2;
   float leftWheelSpeed = targetSpeedLinear - targetSpeedAngular * wheelbase / 2;
 
-  calculateError(&error0, &accError0, &errorGap0, currentSpeed0, leftWheelSpeed); // Use leftWheelSpeed here
+  calculateError(&error0, &accError0, &errorGap0, currentSpeed0, rightWheelSpeed); // Use rightWheelSpeed here
   float pidControl0 = pidControlSystem(error0, accError0, errorGap0, dt);
   moveMotor(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, pidControl0);
   
-  calculateError(&error1, &accError1, &errorGap1, currentSpeed1, rightWheelSpeed); // And use rightWheelSpeed here
+  calculateError(&error1, &accError1, &errorGap1, currentSpeed1, leftWheelSpeed); // And use leftWheelSpeed here
   float pidControl1 = pidControlSystem(error1, accError1, errorGap1, dt);
   moveMotor(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, pidControl1);
 }
