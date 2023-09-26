@@ -153,16 +153,18 @@ void loop() {
     angularSpeed = (rightWheelSpeed - leftWheelSpeed) / wheelbase;
 
     // Update Odometry
-    pos_x += interval * ((leftWheelSpeed + rightWheelSpeed) / 2) * cos(angle_z);
-    pos_y += interval * ((leftWheelSpeed + rightWheelSpeed) / 2) * sin(angle_z);
-    angle_z += interval * ((rightWheelSpeed - leftWheelSpeed) / wheelbase);
-    calc_quat(angle_z, qx, qz);
+        pos_x += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * cos(angle_z);
+        pos_y += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * sin(angle_z);
+        angle_z += interval * 0.001 * ((rightWheelSpeed - leftWheelSpeed) / wheelbase);
 
-    // Set Odometry data
-    odom.pose.pose.position.x = pos_x;
-    odom.pose.pose.position.y = pos_y;
-    odom.pose.pose.orientation.x = qx;
-    odom.pose.pose.orientation.z = qz;
+        // Calculate Quaternion from Current Angle (Yaw)
+        calc_quat(angle_z, qx, qz);
+
+        // Set Odometry data
+        odom.pose.pose.position.x = pos_x;
+        odom.pose.pose.position.y = pos_y;
+        odom.pose.pose.orientation.x = qx;
+        odom.pose.pose.orientation.z = qz;
 
     // Publish Odometry data
     RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
