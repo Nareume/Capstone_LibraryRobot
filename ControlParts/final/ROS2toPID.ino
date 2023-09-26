@@ -23,6 +23,8 @@
 #define rightMotorPin2 11
 #define rightMotorPinPWM 12
 
+#define LED_PIN 13
+
 #define MAX_SPEED 1.0 // Max speed in m/s
 #define MAX_PWM 255 // Max PWM value
 
@@ -63,6 +65,16 @@ float errorAngular = 0.0;
 float previousErrorAngular = 0.0;
 float integralAngular = 0.0;
 float derivativeAngular = 0.0;
+
+float rightWheelSpeed = 0.0;
+float leftWheelSpeed = 0.0;
+
+float pos_x = 0;
+float pos_y = 0;
+float angle_z = 0;
+
+float qx = 0;
+float qz = 0;
 
 // Micro-ROS specific definitions
 rcl_publisher_t publisher;
@@ -140,11 +152,29 @@ void loop() {
     linearSpeed = (leftWheelSpeed + rightWheelSpeed) / 2.0;
     angularSpeed = (rightWheelSpeed - leftWheelSpeed) / wheelbase;
 
+    // Update Odometry
+    pos_x += interval * ((leftWheelSpeed + rightWheelSpeed) / 2) * cos(angle_z);
+    pos_y += interval * ((leftWheelSpeed + rightWheelSpeed) / 2) * sin(angle_z);
+    angle_z += interval * ((rightWheelSpeed - leftWheelSpeed) / wheelbase);
+    calc_quat(angle_z, qx, qz);
+
+    // Set Odometry data
+    odom.pose.pose.position.x = pos_x;
+    odom.pose.pose.position.y = pos_y;
+    odom.pose.pose.orientation.x = qx;
+    odom.pose.pose.orientation.z = qz;
+
+    // Publish Odometry data
+    RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
+
     RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
     
     // Calculate motor control here using PID and set motor speeds
-    float rightWheelSpeed = targetSpeedLinear + targetSpeedAngular * wheelbase / 2;
-    float leftWheelSpeed = targetSpeedLinear - targetSpeedAngular * wheelbase / 2;
+    float linearOutput = PIDControl(targetSpeedLinear, linearSpeed, previousErrorLinear, integralLinear, Kp_linear, Ki_linear, Kd_linear);
+    float angularOutput = PIDControl(targetSpeedAngular, angularSpeed, previousErrorAngular, integralAngular, Kp_angular, Ki_angular, Kd_angular);
+  
+    rightWheelSpeed = linearOutput + angularOutput;
+    leftWheelSpeed = linearOutput - angularOutput;
 
     moveMotorPID(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, leftWheelSpeed);
     moveMotorPID(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, rightWheelSpeed);
@@ -189,6 +219,14 @@ void moveMotorPID(int motorPinPWM, int motorPin1, int motorPin2, float speed) {
     digitalWrite(motorPin1, LOW);
     digitalWrite(motorPin2, HIGH);
   }
+}
+
+void calc_quat(float theta, float &qx, float &qz) {
+    float cos_half_theta = cos(theta / 2.0);
+    float sin_half_theta = sin(theta / 2.0);
+
+    qx = cos_half_theta;
+    qz = sin_half_theta;
 }
 
 void serTargetSpeeds() {
