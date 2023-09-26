@@ -1,57 +1,52 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+'''
+바퀴 한바퀴 회전, 4체배, 90도 엔코더 Setting 확인
+'''
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+#define leftEncoderPinA 3
+#define leftEncoderPinB 4
+#define rightEncoderPinA 8
+#define rightEncoderPinB 9
 
-int encoder0PinA = 3;
-int encoder0PinB = 4;
-volatile int encoder0Pos = 0;
-int encoder0PinALast = LOW;
-int n = LOW;
+volatile long leftEncoderCount = 0;
+volatile long rightEncoderCount = 0;
 
-int encoder1PinA = 9;
-int encoder1PinB = 8;
-volatile int encoder1Pos = 0;
-int encoder1PinALast = LOW;
-int m = LOW;
+void setup() {
+  pinMode(leftEncoderPinA, INPUT);
+  pinMode(leftEncoderPinB, INPUT);
+  pinMode(rightEncoderPinA, INPUT);
+  pinMode(rightEncoderPinB, INPUT);
 
+  // 인터럽트 설정
+  attachInterrupt(digitalPinToInterrupt(leftEncoderPinA), updateLeftEncoder, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(rightEncoderPinA), updateRightEncoder, CHANGE);
 
+  Serial.begin(115200);
+}
 
-void setup() { 
-  pinMode(encoder0PinA, INPUT);
-  pinMode(encoder0PinB, INPUT);
-  pinMode(encoder1PinA, INPUT);
-  pinMode(encoder1PinB, INPUT);
-  Wire.begin();  // SDA = 25, SCL = 26으로 설정
-  lcd.init();
-  lcd.backlight();
-  lcd.clear();
-} 
+void updateLeftEncoder() {
+  // A 채널 상태가 변경될 때마다 B 채널 상태 확인
+  if (digitalRead(leftEncoderPinA) == digitalRead(leftEncoderPinB)) {
+    leftEncoderCount++;
+  } else {
+    leftEncoderCount--;
+  }
+}
 
-void loop() { 
-  n = digitalRead(encoder0PinA);
-  if ((encoder0PinALast == LOW) && (n == HIGH)) {
-    if (digitalRead(encoder0PinB) == LOW) {
-      encoder0Pos--;
-    } else {
-      encoder0Pos++;
-    }
-    lcd.setCursor(0, 0);  // 첫 번째 행
-    lcd.print("Encoder 0: ");
-    lcd.print(encoder0Pos);
-  } 
-  encoder0PinALast = n;
+void updateRightEncoder() {
+  // A 채널 상태가 변경될 때마다 B 채널 상태 확인
+  if (digitalRead(rightEncoderPinA) == digitalRead(rightEncoderPinB)) {
+    rightEncoderCount++;
+  } else {
+    rightEncoderCount--;
+  }
+}
 
-  m = digitalRead(encoder1PinA);
-  if ((encoder1PinALast == LOW) && (m == HIGH)) {
-    if (digitalRead(encoder1PinB) == LOW) {
-      encoder1Pos--;
-    } else {
-      encoder1Pos++;
-    }
-    lcd.setCursor(0, 1);  // 두 번째 행
-    lcd.print("Encoder 1: ");
-    lcd.print(encoder1Pos);
-  } 
-  encoder1PinALast = m;
+void loop() {
+  // 여기에서 leftEncoderCount와 rightEncoderCount를 사용하여 로직을 수행
+  Serial.print("Left Encoder Count: ");
+  Serial.println(leftEncoderCount);
+  Serial.print("Right Encoder Count: ");
+  Serial.println(rightEncoderCount);
+
+  delay(1000); // 1초 동안 대기
 }
