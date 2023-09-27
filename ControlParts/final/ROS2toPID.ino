@@ -127,6 +127,12 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
     "micro_ros_arduino_node_publisher"));
 
+  // Executor and Timer setup
+  RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
+  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &t_msg, &subscription_callback, ON_NEW_DATA));// Executor and Timer setup
+  RCCHECK(rclc_executor_add_timer(&executor, &timer));
+  
+
   // Motor and Encoder setup
   pinMode(leftMotorPin1, OUTPUT);
   pinMode(leftMotorPin2, OUTPUT);
@@ -153,22 +159,21 @@ void loop() {
     angularSpeed = (rightWheelSpeed - leftWheelSpeed) / wheelbase;
 
     // Update Odometry
-        pos_x += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * cos(angle_z);
-        pos_y += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * sin(angle_z);
-        angle_z += interval * 0.001 * ((rightWheelSpeed - leftWheelSpeed) / wheelbase);
+    pos_x += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * cos(angle_z);
+    pos_y += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * sin(angle_z);
+    angle_z += interval * 0.001 * ((rightWheelSpeed - leftWheelSpeed) / wheelbase);
 
-        // Calculate Quaternion from Current Angle (Yaw)
-        calc_quat(angle_z, qx, qz);
+    // Calculate Quaternion from Current Angle (Yaw)
+    calc_quat(angle_z, qx, qz);
 
-        // Set Odometry data
-        odom.pose.pose.position.x = pos_x;
-        odom.pose.pose.position.y = pos_y;
-        odom.pose.pose.orientation.x = qx;
-        odom.pose.pose.orientation.z = qz;
+    // Set Odometry data
+    odom.pose.pose.position.x = pos_x;
+    odom.pose.pose.position.y = pos_y;
+    odom.pose.pose.orientation.x = qx;
+    odom.pose.pose.orientation.z = qz;
 
     // Publish Odometry data
     RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
-
     RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
     
     // Calculate motor control here using PID and set motor speeds
