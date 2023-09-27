@@ -66,6 +66,7 @@ float previousErrorAngular = 0.0;
 float integralAngular = 0.0;
 float derivativeAngular = 0.0;
 
+// Odometry values 
 float rightWheelSpeed = 0.0;
 float leftWheelSpeed = 0.0;
 
@@ -163,6 +164,10 @@ void loop() {
     pos_y += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * sin(angle_z);
     angle_z += interval * 0.001 * ((rightWheelSpeed - leftWheelSpeed) / wheelbase);
 
+    // angle_z overflow 방지 
+    if (angle_z > PI) { angle_z -= 2 * PI; } 
+    else if (angle_z < -PI) { angle_z += 2 * PI; }
+    
     // Calculate Quaternion from Current Angle (Yaw)
     calc_quat(angle_z, qx, qz);
 
@@ -234,20 +239,4 @@ void calc_quat(float theta, float &qx, float &qz) {
 
     qx = cos_half_theta;
     qz = sin_half_theta;
-}
-
-void serTargetSpeeds() {
-  Serial.print("Target Linear Speed: ");
-  Serial.print(targetSpeedLinear);
-  Serial.print(" m/s, Target Angular Speed: ");
-  Serial.print(targetSpeedAngular);
-  Serial.println(" rad/s");
-}
-
-void serActualSpeeds() {
-  Serial.print("Linear Speed: ");
-  Serial.print(linearSpeed);
-  Serial.print(" m/s, Angular Speed: ");
-  Serial.print(angularSpeed);
-  Serial.println(" rad/s");
 }
