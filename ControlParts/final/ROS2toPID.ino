@@ -74,7 +74,7 @@ float pos_x = 0;
 float pos_y = 0;
 float angle_z = 0;
 
-float qx = 0;
+float qw = 0;
 float qz = 0;
 
 // Micro-ROS specific definitions
@@ -169,17 +169,10 @@ void loop() {
     else if (angle_z < -PI) { angle_z += 2 * PI; }
     
     // Calculate Quaternion from Current Angle (Yaw)
-    calc_quat(angle_z, qx, qz);
+    calc_quat(-angle_z, qz, qw);
 
     // Set Odometry data
-    odom.pose.pose.position.x = pos_x;
-    odom.pose.pose.position.y = pos_y;
-    odom.pose.pose.orientation.x = qx;
-    odom.pose.pose.orientation.z = qz;
-
-    // Publish Odometry data
-    RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
-    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
+    
     
     // Calculate motor control here using PID and set motor speeds
     float linearOutput = PIDControl(targetSpeedLinear, linearSpeed, previousErrorLinear, integralLinear, Kp_linear, Ki_linear, Kd_linear);
@@ -190,6 +183,15 @@ void loop() {
 
     moveMotorPID(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, leftWheelSpeed);
     moveMotorPID(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, rightWheelSpeed);
+
+    odom.pose.pose.position.x = -pos_x;
+    odom.pose.pose.position.y = -pos_y;
+    odom.pose.pose.orientation.w = qw;
+    odom.pose.pose.orientation.z = qz;
+
+    // Publish Odometry data
+    RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
+    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
   }
 }
 
@@ -218,8 +220,8 @@ float PIDControl(float target, float current, float &previousError, float &integ
     return output;
 }
 
-void moveMotorPID(int motorPinPWM, int motorPin1, int motorPin2, float speed) {
-  int pwmSpeed = map(speed * 1000, 0, MAX_SPEED * 1000, 0, MAX_PWM);
+void moveMotorPID(int motorPinPWM, int motorPin1, int motorPin2, float speedd) {
+  int pwmSpeed = map(speedd * 1000, 0, MAX_SPEED * 1000, 0, MAX_PWM);
   pwmSpeed = constrain(pwmSpeed, -MAX_PWM, MAX_PWM);
 
   analogWrite(motorPinPWM, abs(pwmSpeed));
@@ -233,10 +235,10 @@ void moveMotorPID(int motorPinPWM, int motorPin1, int motorPin2, float speed) {
   }
 }
 
-void calc_quat(float theta, float &qx, float &qz) {
+void calc_quat(float theta, float &qz, float &qw) {
     float cos_half_theta = cos(theta / 2.0);
     float sin_half_theta = sin(theta / 2.0);
 
-    qx = cos_half_theta;
+    qw = cos_half_theta;
     qz = sin_half_theta;
 }
