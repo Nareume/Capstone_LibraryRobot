@@ -32,7 +32,7 @@
 volatile long leftEncoderCount = 0;
 volatile long rightEncoderCount = 0;
 unsigned long previousMillis = 0;
-const unsigned long interval = 100;  // Interval in milliseconds
+const unsigned long interval = 10;  // Interval in milliseconds
 
 // Robot specifications
 const double wheelDiameter = 0.13;
