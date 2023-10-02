@@ -49,12 +49,12 @@ float angularSpeed = 0.0;
 
 // PID Constants and Variables
 float Kp_linear = 0.5;
-float Ki_linear = 0.000001;
-float Kd_linear = 0.000003;
+float Ki_linear = 0.00001;
+float Kd_linear = 0.00003;
 
 float Kp_angular = 0.3;
-float Ki_angular = 0.000001;
-float Kd_angular = 0.000003;
+float Ki_angular = 0.00001;
+float Kd_angular = 0.00003;
 
 float errorLinear = 0.0;
 float previousErrorLinear = 0.0;
