@@ -20,7 +20,7 @@
 volatile long leftEncoderCount = 0;
 volatile long rightEncoderCount = 0;
 unsigned long previousMillis = 0;
-const unsigned long interval = 100;  // Interval in milliseconds
+const unsigned long interval = 10;  // Interval in milliseconds
 
 // Robot specifications
 const double wheelDiameter = 0.13;
@@ -36,13 +36,13 @@ float linearSpeed = 0.0;
 float angularSpeed = 0.0;
 
 // PID Constants and Variables
-float Kp_linear = 0.5;
-float Ki_linear = 0.000001;
-float Kd_linear = 0.000003;
+float Kp_linear = 1.5;
+float Ki_linear = 0.05;
+float Kd_linear = 0.000002;
 
-float Kp_angular = 0.3;
+float Kp_angular = 0.000001;
 float Ki_angular = 0.000001;
-float Kd_angular = 0.000003;
+float Kd_angular = 0.000001;
 
 float errorLinear = 0.0;
 float previousErrorLinear = 0.0;
@@ -105,7 +105,7 @@ void loop() {
 
     linearSpeed = (leftWheelSpeed + rightWheelSpeed) / 2.0;
     angularSpeed = (rightWheelSpeed - leftWheelSpeed) / wheelbase;
-
+    serTargetSpeeds();
     serActualSpeeds();
   }
   
@@ -117,27 +117,22 @@ void loop() {
       targetSpeedLinear += 0.1;
       targetSpeedAngular = 0.0;
       Serial.println("FORWARD");
-      serTargetSpeeds();
     } else if (command == "s") {
       targetSpeedLinear = 0.0;
       targetSpeedAngular = 0.0;
       Serial.println("STOP");
-      serTargetSpeeds();
     } else if (command == "a") {
       targetSpeedLinear = 0.0;
       targetSpeedAngular += 0.1;
       Serial.println("LEFT");
-      serTargetSpeeds();
     } else if (command == "d") {
       targetSpeedLinear = 0.0;
       targetSpeedAngular -= 0.1;
       Serial.println("RIGHT");
-      serTargetSpeeds();
     } else if (command == "x") {
       targetSpeedLinear -= 0.1;
       targetSpeedAngular = 0.0;
       Serial.println("BACK");
-      serTargetSpeeds();
     }  
   }
 
@@ -166,18 +161,29 @@ void moveMotorPID(int motorPinPWM, int motorPin1, int motorPin2, float speed) {
   }
 }
 
+
 void serTargetSpeeds() {
-  Serial.print("Target Linear Speed: ");
+  //Serial.print("Target Linear Speed: ");
   Serial.print(targetSpeedLinear);
-  Serial.print(" m/s, Target Angular Speed: ");
+  Serial.print(",");
   Serial.print(targetSpeedAngular);
-  Serial.println(" rad/s");
 }
 
+
 void serActualSpeeds() {
-  Serial.print("Linear Speed: ");
+  Serial.print(",");
   Serial.print(linearSpeed);
-  Serial.print(" m/s, Angular Speed: ");
-  Serial.print(angularSpeed);
-  Serial.println(" rad/s");
+  Serial.print(",");
+  Serial.println(angularSpeed);
+}
+
+
+
+
+void calc_quat(float theta, float &qx, float &qz) {
+    float cos_half_theta = cos(theta / 2.0);
+    float sin_half_theta = sin(theta / 2.0);
+
+    qx = cos_half_theta;
+    qz = sin_half_theta;
 }
