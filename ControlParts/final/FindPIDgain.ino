@@ -1,19 +1,20 @@
 #include <Arduino.h>
+#include <PID_v1.h>
 
 // Motor and Encoder Pins
-#define leftEncoderPinA 3
-#define leftEncoderPinB 4
-#define leftMotorPin1 5
-#define leftMotorPin2 6
+#define leftEncoderPinA 4
+#define leftEncoderPinB 3
+#define leftMotorPin1 6
+#define leftMotorPin2 5
 #define leftMotorPinPWM 7
 
-#define rightEncoderPinA 8
-#define rightEncoderPinB 9
-#define rightMotorPin1 10
-#define rightMotorPin2 11
+#define rightEncoderPinA 9
+#define rightEncoderPinB 8
+#define rightMotorPin1 11
+#define rightMotorPin2 10
 #define rightMotorPinPWM 12
 
-#define MAX_SPEED 1.0 // Max speed in m/s
+#define MAX_SPEED 1.5 // Max speed in m/s
 #define MAX_PWM 255 // Max PWM value
 
 // Global variables
@@ -29,30 +30,13 @@ const double wheelCircumference = wheelDiameter * PI;
 const double encoderPulsesPerRevolution = 741.0; 
 const double distancePerPulse = wheelCircumference / encoderPulsesPerRevolution; 
 
-// PID Global variables
-float targetSpeedLinear = 0.0;
-float targetSpeedAngular = 0.0;
-float linearSpeed = 0.0;
-float angularSpeed = 0.0;
+// PID variables for linear and angular speed
+double SetpointLinear = 0.0, InputLinear = 0.0, OutputLinear = 0.0;
+double SetpointAngular = 0.0, InputAngular = 0.0, OutputAngular = 0.0;
 
-// PID Constants and Variables
-float Kp_linear = 1.5;
-float Ki_linear = 0.05;
-float Kd_linear = 0.000002;
-
-float Kp_angular = 0.000001;
-float Ki_angular = 0.000001;
-float Kd_angular = 0.000001;
-
-float errorLinear = 0.0;
-float previousErrorLinear = 0.0;
-float integralLinear = 0.0;
-float derivativeLinear = 0.0;
-
-float errorAngular = 0.0;
-float previousErrorAngular = 0.0;
-float integralAngular = 0.0;
-float derivativeAngular = 0.0;
+// PID objects
+PID PIDLinear(&InputLinear, &OutputLinear, &SetpointLinear, 650.0, 20.0, 0.000001, DIRECT);
+PID PIDAngular(&InputAngular, &OutputAngular, &SetpointAngular, 50.0, 5.0, 0.1, DIRECT);
 
 void setup() {
   pinMode(leftMotorPin1, OUTPUT);
@@ -63,7 +47,16 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(leftEncoderPinA), updateLeftEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(rightEncoderPinA), updateRightEncoder, CHANGE);
 
+  // Initialize Serial
   Serial.begin(115200);
+  
+  // Start the PID controllers
+  PIDLinear.SetMode(AUTOMATIC);
+  PIDAngular.SetMode(AUTOMATIC);
+
+  // Set output limits for the PID controllers
+  PIDLinear.SetOutputLimits(-MAX_PWM, MAX_PWM);
+  PIDAngular.SetOutputLimits(-MAX_PWM, MAX_PWM);
 }
 
 void updateLeftEncoder() {
@@ -82,15 +75,6 @@ void updateRightEncoder() {
   }
 }
 
-float PIDControl(float target, float current, float &previousError, float &integral, float Kp, float Ki, float Kd) {
-    float error = target - current;
-    integral += error;
-    float derivative = error - previousError;
-    float output = Kp * error + Ki * integral + Kd * derivative;
-    previousError = error;
-    return output;
-}
-
 void loop() {
   unsigned long currentMillis = millis();
 
@@ -103,87 +87,81 @@ void loop() {
     leftEncoderCount = 0;
     rightEncoderCount = 0;
 
-    linearSpeed = (leftWheelSpeed + rightWheelSpeed) / 2.0;
-    angularSpeed = (rightWheelSpeed - leftWheelSpeed) / wheelbase;
+    // Update PID inputs
+    InputLinear = (leftWheelSpeed + rightWheelSpeed) / 2.0;
+    InputAngular = (rightWheelSpeed - leftWheelSpeed) / wheelbase;
+
+     // Read serial input to change speeds
+    if (Serial.available() > 0) {
+      String command = Serial.readStringUntil('\n');
+      command.trim();
+  
+      // Parse command and update setpoints
+      if (command == "w") {
+        SetpointLinear += 0.1;
+        SetpointAngular = 0.0;
+        Serial.println("FORWARD");
+      } 
+      else if (command == "x") {
+        SetpointLinear -= 0.1;
+        SetpointAngular = 0.0;
+        Serial.println("STOP");
+      }
+      else if (command == "s") {
+        SetpointLinear = 0.0;
+        SetpointAngular = 0.0;
+        Serial.println("STOP");
+      } else if (command == "a") {
+        SetpointLinear = 0.0;
+        SetpointAngular -= 0.1;
+        Serial.println("TURN LEFT");
+      } else if (command == "d") {
+        SetpointLinear = 0.0;
+        SetpointAngular += 0.1;
+        Serial.println("TURN RIGHT");
+      }
+    }
+
+    // Compute PID
+    PIDLinear.Compute();
+    PIDAngular.Compute();
+
+    // Apply PID outputs to motors
+    moveMotorPID(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, OutputLinear - OutputAngular);
+    moveMotorPID(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, OutputLinear + OutputAngular);
+
+    // Send speeds to serial
     serTargetSpeeds();
     serActualSpeeds();
   }
   
-  if (Serial.available() > 0) {
-    String command = Serial.readStringUntil('\n');
-    command.trim();
-
-    if (command == "w") {
-      targetSpeedLinear += 0.1;
-      targetSpeedAngular = 0.0;
-      Serial.println("FORWARD");
-    } else if (command == "s") {
-      targetSpeedLinear = 0.0;
-      targetSpeedAngular = 0.0;
-      Serial.println("STOP");
-    } else if (command == "a") {
-      targetSpeedLinear = 0.0;
-      targetSpeedAngular += 0.1;
-      Serial.println("LEFT");
-    } else if (command == "d") {
-      targetSpeedLinear = 0.0;
-      targetSpeedAngular -= 0.1;
-      Serial.println("RIGHT");
-    } else if (command == "x") {
-      targetSpeedLinear -= 0.1;
-      targetSpeedAngular = 0.0;
-      Serial.println("BACK");
-    }  
-  }
-
-  float linearOutput = PIDControl(targetSpeedLinear, linearSpeed, previousErrorLinear, integralLinear, Kp_linear, Ki_linear, Kd_linear);
-  float angularOutput = PIDControl(targetSpeedAngular, angularSpeed, previousErrorAngular, integralAngular, Kp_angular, Ki_angular, Kd_angular);
-
-  float rightWheelSpeed = linearOutput + angularOutput;
-  float leftWheelSpeed = linearOutput - angularOutput;
-
-  moveMotorPID(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, leftWheelSpeed);
-  moveMotorPID(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, rightWheelSpeed);
 }
 
-void moveMotorPID(int motorPinPWM, int motorPin1, int motorPin2, float speed) {
-  int pwmSpeed = map(speed * 1000, 0, MAX_SPEED * 1000, 0, MAX_PWM);
-  pwmSpeed = constrain(pwmSpeed, -MAX_PWM, MAX_PWM);
+void moveMotorPID(int motorPWM, int motorPin1, int motorPin2, double speed) {
+  int direction = speed > 0 ? HIGH : LOW;
+  speed = abs(speed);
+  speed = min(speed, (double)MAX_PWM);
 
-  analogWrite(motorPinPWM, abs(pwmSpeed));
-
-  if (pwmSpeed >= 0) {
-    digitalWrite(motorPin1, HIGH);
-    digitalWrite(motorPin2, LOW);
-  } else {
-    digitalWrite(motorPin1, LOW);
-    digitalWrite(motorPin2, HIGH);
-  }
+  analogWrite(motorPWM, (int)speed);
+  digitalWrite(motorPin1, direction);
+  digitalWrite(motorPin2, !direction);
 }
-
 
 void serTargetSpeeds() {
-  //Serial.print("Target Linear Speed: ");
-  Serial.print(targetSpeedLinear);
+  //Serial.print("Target Linear: ");
+  Serial.print(SetpointLinear);
+  //Serial.print(" m/s | Target Angular: ");
   Serial.print(",");
-  Serial.print(targetSpeedAngular);
+  Serial.print(SetpointAngular);
+  Serial.print(",");
+  //Serial.println(" rad/s");
 }
-
 
 void serActualSpeeds() {
+  //Serial.print("Actual Linear: ");
+  Serial.print(InputLinear);
   Serial.print(",");
-  Serial.print(linearSpeed);
-  Serial.print(",");
-  Serial.println(angularSpeed);
-}
-
-
-
-
-void calc_quat(float theta, float &qx, float &qz) {
-    float cos_half_theta = cos(theta / 2.0);
-    float sin_half_theta = sin(theta / 2.0);
-
-    qx = cos_half_theta;
-    qz = sin_half_theta;
+  //Serial.print(" m/s | Actual Angular: ");
+  Serial.println(InputAngular);
+  //Serial.println(" rad/s");
 }
