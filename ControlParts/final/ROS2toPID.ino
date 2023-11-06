@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <PID_v1.h>
 #include <micro_ros_arduino.h>
 
 #include <stdio.h>
@@ -11,64 +12,42 @@
 #include <nav_msgs/msg/odometry.h>
 
 // Motor and Encoder Pins
-#define leftEncoderPinA 3
-#define leftEncoderPinB 4
-#define leftMotorPin1 5
-#define leftMotorPin2 6
+#define leftEncoderPinA 4
+#define leftEncoderPinB 3
+#define leftMotorPin1 6
+#define leftMotorPin2 5
 #define leftMotorPinPWM 7
 
-#define rightEncoderPinA 8
-#define rightEncoderPinB 9
-#define rightMotorPin1 10
-#define rightMotorPin2 11
+#define rightEncoderPinA 9
+#define rightEncoderPinB 8
+#define rightMotorPin1 11
+#define rightMotorPin2 10
 #define rightMotorPinPWM 12
 
 #define LED_PIN 13
 
-#define MAX_SPEED 1.0 // Max speed in m/s
+#define MAX_SPEED 1.5 // Max speed in m/s
 #define MAX_PWM 255 // Max PWM value
 
-// Global variables for motor and encoders
+// Global variables
 volatile long leftEncoderCount = 0;
 volatile long rightEncoderCount = 0;
 unsigned long previousMillis = 0;
-const unsigned long interval = 10;  // Interval in milliseconds
+const unsigned long interval = 100; // Interval in milliseconds
 
 // Robot specifications
 const double wheelDiameter = 0.13;
 const double wheelbase = 0.30;
+const double gearboxRatio = 27.0;
+const double encoderResolution = 26.0;
 const double wheelCircumference = wheelDiameter * PI;
-const double encoderPulsesPerRevolution = 741.0; 
-const double distancePerPulse = wheelCircumference / encoderPulsesPerRevolution; 
+const double encoderPulsesPerRevolution = 741.0;
+const double distancePerPulse = wheelCircumference / encoderPulsesPerRevolution;
 
-// PID Global variables
-float targetSpeedLinear = 0.0;
-float targetSpeedAngular = 0.0;
-float linearSpeed = 0.0;
-float angularSpeed = 0.0;
-
-// PID Constants and Variables
-float Kp_linear = 0.5;
-float Ki_linear = 0.00001;
-float Kd_linear = 0.00003;
-
-float Kp_angular = 0.3;
-float Ki_angular = 0.00001;
-float Kd_angular = 0.00003;
-
-float errorLinear = 0.0;
-float previousErrorLinear = 0.0;
-float integralLinear = 0.0;
-float derivativeLinear = 0.0;
-
-float errorAngular = 0.0;
-float previousErrorAngular = 0.0;
-float integralAngular = 0.0;
-float derivativeAngular = 0.0;
-
-// Odometry values 
-float rightWheelSpeed = 0.0;
-float leftWheelSpeed = 0.0;
+// PID variables for left and right motors
+double SetpointLeft = 0.0, InputLeft = 0.0, OutputLeft = 0.0;
+double SetpointRight = 0.0, InputRight = 0.0, OutputRight = 0.0;
+double SetpointLinear = 0.0, SetpointAngular = 0.0, InputLinear = 0.0, InputAngular = 0.0;
 
 float pos_x = 0;
 float pos_y = 0;
@@ -76,6 +55,10 @@ float angle_z = 0;
 
 float qw = 0;
 float qz = 0;
+
+// PID objects for left and right motors
+PID PIDLeft(&InputLeft, &OutputLeft, &SetpointLeft, 600.0, 5.0, 1.0,DIRECT);
+PID PIDRight(&InputRight, &OutputRight, &SetpointRight, 600.0, 5.0, 1.0, DIRECT);
 
 // Micro-ROS specific definitions
 rcl_publisher_t publisher;
@@ -100,8 +83,8 @@ void error_loop(){
 
 void subscription_callback(const void *msgin) {
   const geometry_msgs__msg__Twist * t_msg = (const geometry_msgs__msg__Twist *)msgin;
-  targetSpeedLinear = t_msg->linear.x;
-  targetSpeedAngular = t_msg->angular.z;
+  SetpointLinear = t_msg->linear.x;
+  SetpointAngular = t_msg->angular.z;
 }
 
 void setup() {
@@ -133,66 +116,26 @@ void setup() {
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &t_msg, &subscription_callback, ON_NEW_DATA));// Executor and Timer setup
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
   
-
-  // Motor and Encoder setup
   pinMode(leftMotorPin1, OUTPUT);
   pinMode(leftMotorPin2, OUTPUT);
   pinMode(rightMotorPin1, OUTPUT);
   pinMode(rightMotorPin2, OUTPUT);
+  pinMode(leftMotorPinPWM, OUTPUT);
+  pinMode(rightMotorPinPWM, OUTPUT);
+
   attachInterrupt(digitalPinToInterrupt(leftEncoderPinA), updateLeftEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(rightEncoderPinA), updateRightEncoder, CHANGE);
+
+  // Initialize Serial
   Serial.begin(115200);
-}
 
-void loop() {
-  unsigned long currentMillis = millis();
+  // Start the PID controllers
+  PIDLeft.SetMode(AUTOMATIC);
+  PIDRight.SetMode(AUTOMATIC);
 
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
-    double leftWheelSpeed = (leftEncoderCount * distancePerPulse) / (interval / 1000.0);
-    double rightWheelSpeed = (rightEncoderCount * distancePerPulse) / (interval / 1000.0);
-
-    leftEncoderCount = 0;
-    rightEncoderCount = 0;
-
-    linearSpeed = (leftWheelSpeed + rightWheelSpeed) / 2.0;
-    angularSpeed = (rightWheelSpeed - leftWheelSpeed) / wheelbase;
-
-    // Update Odometry
-    pos_x += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * cos(angle_z);
-    pos_y += interval * 0.001 * ((leftWheelSpeed + rightWheelSpeed) / 2) * sin(angle_z);
-    angle_z += interval * 0.001 * ((rightWheelSpeed - leftWheelSpeed) / wheelbase);
-
-    // angle_z overflow 방지 
-    if (angle_z > PI) { angle_z -= 2 * PI; } 
-    else if (angle_z < -PI) { angle_z += 2 * PI; }
-    
-    // Calculate Quaternion from Current Angle (Yaw)
-    calc_quat(-angle_z, qz, qw);
-
-    // Set Odometry data
-    
-    
-    // Calculate motor control here using PID and set motor speeds
-    float linearOutput = PIDControl(targetSpeedLinear, linearSpeed, previousErrorLinear, integralLinear, Kp_linear, Ki_linear, Kd_linear);
-    float angularOutput = PIDControl(targetSpeedAngular, angularSpeed, previousErrorAngular, integralAngular, Kp_angular, Ki_angular, Kd_angular);
-  
-    rightWheelSpeed = linearOutput + angularOutput;
-    leftWheelSpeed = linearOutput - angularOutput;
-
-    moveMotorPID(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, leftWheelSpeed);
-    moveMotorPID(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, rightWheelSpeed);
-
-    odom.pose.pose.position.x = -pos_x;
-    odom.pose.pose.position.y = -pos_y;
-    odom.pose.pose.orientation.w = qw;
-    odom.pose.pose.orientation.z = qz;
-
-    // Publish Odometry data
-    RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
-    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
-  }
+  // Set output limits for the PID controllers
+  PIDLeft.SetOutputLimits(-MAX_PWM, MAX_PWM);
+  PIDRight.SetOutputLimits(-MAX_PWM, MAX_PWM);
 }
 
 void updateLeftEncoder() {
@@ -211,27 +154,80 @@ void updateRightEncoder() {
   }
 }
 
-float PIDControl(float target, float current, float &previousError, float &integral, float Kp, float Ki, float Kd) {
-    float error = target - current;
-    integral += error;
-    float derivative = error - previousError;
-    float output = Kp * error + Ki * integral + Kd * derivative;
-    previousError = error;
-    return output;
+void loop() {
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    // Calculate speed from encoder counts
+    double leftWheelSpeed = (leftEncoderCount * distancePerPulse) / (interval / 1000.0);
+    double rightWheelSpeed = (rightEncoderCount * distancePerPulse) / (interval / 1000.0);
+
+    // Reset encoder counts
+    leftEncoderCount = 0;
+    rightEncoderCount = 0;
+
+    // Compute linear and angular setpoints from desired values
+    SetpointLeft = SetpointLinear - (SetpointAngular * wheelbase / 2.0);
+    SetpointRight = SetpointLinear + (SetpointAngular * wheelbase / 2.0);
+
+    // Update Odometry
+    float leftWheelmove = ((wheelCircumference * leftEncoderCount) / encoderResolution) / (interval / 1000.0);
+    float rightWheelmove = ((wheelCircumference * leftEncoderCount) / encoderResolution) / (interval / 1000.0);
+    
+    pos_x += interval * ((leftWheelmove + rightWheelmove) / 2) * cos(angle_z);
+    pos_y += interval * ((leftWheelmove + rightWheelmove) / 2) * sin(angle_z);
+    angle_z += interval * ((rightWheelmove - leftWheelmove) / wheelbase);
+
+    // Update the PID control inputs
+    InputLeft = leftWheelSpeed;
+    InputRight = rightWheelSpeed;
+
+    // Compute PID update for each motor
+    PIDLeft.Compute();
+    PIDRight.Compute();
+
+    // Drive motors using the PID outputs
+    moveMotor(leftMotorPinPWM, leftMotorPin1, leftMotorPin2, OutputLeft);
+    moveMotor(rightMotorPinPWM, rightMotorPin1, rightMotorPin2, OutputRight);
+
+    // Calculate actual linear and angular speeds based on motor outputs
+    InputLinear = (InputLeft + InputRight) / 2.0; // This assumes that Output is proportional to speed
+    InputAngular = (InputRight - InputLeft) / wheelbase; // This assumes that wheel separation is tuned to represent the actual turning rate
+
+    // Calculate Quaternion from Current Angle (Yaw)
+    calc_quat(-angle_z, qz, qw);
+
+    odom.pose.pose.position.x = -pos_x;
+    odom.pose.pose.position.y = -pos_y;
+    odom.pose.pose.orientation.w = qw;
+    odom.pose.pose.orientation.z = qz;
+
+    // Publish Odometry data
+    RCSOFTCHECK(rcl_publish(&publisher, &odom, NULL));
+    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
+
+    
+    // For debugging, you might want to print out values to the Serial
+    PrintTargetSpeeds();
+    PrintActualSpeeds();
+  }
 }
 
-void moveMotorPID(int motorPinPWM, int motorPin1, int motorPin2, float speedd) {
-  int pwmSpeed = map(speedd * 1000, 0, MAX_SPEED * 1000, 0, MAX_PWM);
-  pwmSpeed = constrain(pwmSpeed, -MAX_PWM, MAX_PWM);
-
-  analogWrite(motorPinPWM, abs(pwmSpeed));
-
-  if (pwmSpeed >= 0) {
-    digitalWrite(motorPin1, HIGH);
-    digitalWrite(motorPin2, LOW);
+void moveMotor(int pwmPin, int in1Pin, int in2Pin, double output) {
+  if (output > 0) {
+    analogWrite(pwmPin, (int)output);
+    digitalWrite(in1Pin, HIGH);
+    digitalWrite(in2Pin, LOW);
+  } else if (output < 0) {
+    analogWrite(pwmPin, (int)-output);
+    digitalWrite(in1Pin, LOW);
+    digitalWrite(in2Pin, HIGH);
   } else {
-    digitalWrite(motorPin1, LOW);
-    digitalWrite(motorPin2, HIGH);
+    analogWrite(pwmPin, 0);
+    digitalWrite(in1Pin, LOW);
+    digitalWrite(in2Pin, LOW);
   }
 }
 
@@ -241,4 +237,19 @@ void calc_quat(float theta, float &qz, float &qw) {
 
     qw = cos_half_theta;
     qz = sin_half_theta;
+}
+
+void PrintTargetSpeeds() {
+  Serial.print(SetpointLinear);
+  Serial.print(",");
+  Serial.print(SetpointAngular);
+  Serial.print(",");
+}
+
+
+
+void PrintActualSpeeds() {
+  Serial.print(InputLinear);
+  Serial.print(",");
+  Serial.println(InputAngular);
 }
