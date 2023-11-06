@@ -1,6 +1,7 @@
 '''
 바퀴 한바퀴 회전, 4체배, 90도 엔코더 Setting 확인
 '''
+#include <Arduino.h>
 
 #define leftEncoderPinA 3
 #define leftEncoderPinB 4

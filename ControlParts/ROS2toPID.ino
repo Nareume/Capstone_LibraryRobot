@@ -1,3 +1,7 @@
+'''
+Mirco-ROS Arduino Node를 활용한 통신 구현 및 PID 제어 코드
+'''
+
 #include <Arduino.h>
 #include <PID_v1.h>
 #include <micro_ros_arduino.h>

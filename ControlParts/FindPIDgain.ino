@@ -1,3 +1,7 @@
+'''
+Arduino 내 Differential Drive Robot에서의 모터 PID 제어 실험 코드
+'''
+
 #include <Arduino.h>
 #include <PID_v1.h>
 

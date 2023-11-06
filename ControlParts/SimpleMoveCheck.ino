@@ -1,3 +1,7 @@
+'''
+엔코더 모터 작동 정상 여부 확인 코드
+'''
+
 #include <Arduino.h>
 
 // Motor and Encoder Pins
