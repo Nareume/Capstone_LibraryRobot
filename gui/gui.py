@@ -2,19 +2,19 @@ import tkinter as tk
 from tkinter import PhotoImage
 from PIL import Image, ImageTk
 
-# 이미지의 크기를 변경하는 함수
+# 이미지의 크기를 변경하는 함수pip
 def resize_image(image, new_width, new_height):
     image = image.resize((new_width, new_height), Image.ANTIALIAS)
     return ImageTk.PhotoImage(image)
 
 # 반납 버튼 클릭 시 호출될 함수
 def return_books():
-    print("반납 버튼이 클릭되었습니다.")
+    print("반납 모드를 시작합니다.")
     # 여기에 새 창을 여는 등의 로직을 구현할 수 있습니다.
 
 # 안내 버튼 클릭 시 호출될 함수
 def guide():
-    print("안내 버튼이 클릭되었습니다.")
+    print("안내 모드를 시작합니다.")
     # 여기에 새 창을 여는 등의 로직을 구현할 수 있습니다.
 
 # 메인 윈도우 생성
